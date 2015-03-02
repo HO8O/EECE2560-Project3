@@ -36,7 +36,8 @@ class board
       ValueType getCell(int, int);
 	  void setCell(int x,int y,int i);
 	  void printConflicts();
-	  void updateConflicts();//should probs pass the i and j values of the new val to speed up
+	  bool isSolved();
+	  void clearCell(int i, int j);
       
    private:
 
@@ -44,12 +45,16 @@ class board
       // dimension.  I.e. they are each (BoardSize+1) X (BoardSize+1)
 
       matrix<ValueType> value;
+
+	  void initConflicts();
+	  void updateConflicts(int i, int j);//should probs pass the i and j values of the new val to speed up
+
 	  vector<bool> rowConflicts;
-	  void board::updateRowConflicts(int square);
+	  void updateRowConflicts(int row);
 	  vector<bool> columnConflicts;
-	  void board::updateColumnConflicts(int square);
+	  void updateColumnConflicts(int column);
 	  vector<bool> squareConflicts;
-	  void board::updateSquareConflicts(int square);
+	  void updateSquareConflicts(int square);
 };
 
 board::board(int sqSize)
@@ -60,7 +65,7 @@ board::board(int sqSize)
 
 void board::clear()
 {
-	for (int i = 1; i < BoardSize; i++)
+	for (int i = 1; i <= BoardSize; i++)
 	{
 		for each (ValueType v in value[i])
 		{
@@ -90,6 +95,9 @@ void board::initialize(ifstream &fin)
    char ch;
 
    clear();
+   rowConflicts.resize(BoardSize);
+   columnConflicts.resize(BoardSize);
+   squareConflicts.resize(BoardSize);
    for (int i = 1; i <= BoardSize; i++)
    {
 	   for (int j = 1; j <= BoardSize; j++)
@@ -105,42 +113,126 @@ void board::initialize(ifstream &fin)
    }
 }
 
-void board::printConflicts()
-{
-
-}
-
-void updateRowConflicts(int row)
-{
-
-}
-
-void updateColumnConflicts(int column)
-{
-
-}
-
-void board::updateSquareConflicts(int square)
-{
-
-}
-
-
-void board::updateConflicts()
-{
-
-}
-
-
 int squareNumber(int i, int j)
 // Return the square number of cell i,j (counting from left to right,
 // top to bottom.  Note that i and j each go from 1 to BoardSize
 {
-   // Note that (int) i/SquareSize and (int) j/SquareSize are the x-y
-   // coordinates of the square that i,j is in.  
+	// Note that (int) i/SquareSize and (int) j/SquareSize are the x-y
+	// coordinates of the square that i,j is in.  
 
-   return SquareSize * ((i-1)/SquareSize) + (j-1)/SquareSize + 1;
+	return SquareSize * ((i - 1) / SquareSize) + (j - 1) / SquareSize + 1;
 }
+
+void board::printConflicts()
+{
+	cout << "\nRow conflicts : ";
+	for each (bool b in columnConflicts)
+	{
+		if (b == true){
+			cout << " T";
+		}
+		else{
+			cout << " F";
+		}
+	}
+
+	cout << "\nColumn conflicts : ";
+	for each (bool b in columnConflicts)
+	{
+		if (b == true){
+			cout << " T";
+		}
+		else{
+			cout << " F";
+		}
+	}
+
+	cout << "\nSquare conflicts : ";
+	for each (bool b in squareConflicts)
+	{
+		if (b == true){
+			cout << " T";
+		}
+		else{
+			cout << " F";
+		}
+	}
+}
+
+void conflictCheck(vector<ValueType> valueVect, vector<bool> &conflictVect)
+{
+	for (int x = 1; x <= 9; x++)
+	{
+		int count = 0;
+		for each (ValueType val in valueVect)//-1 to zero index it
+		{
+			if (val == x)
+			{
+				count++;
+			}
+		}
+		if (count > 1)
+		{
+			conflictVect[x - 1] = true;
+		}
+	}
+}
+
+void board::updateRowConflicts(int row)
+{
+	conflictCheck(value[row], rowConflicts);
+}
+
+void board::updateColumnConflicts(int column)
+{
+	//build column vector
+	vector<ValueType> columnVec;
+	for (int i = 1; i <= BoardSize; i++)
+	{
+		columnVec.push_back(value[i][column]);
+	}
+
+	conflictCheck(columnVec, columnConflicts);
+}
+
+void board::updateSquareConflicts(int square)
+{
+	vector<ValueType> squareVec;
+	for(int i = 1; i <= BoardSize; i++)
+	{
+		for (int j = 1; j <= BoardSize; j++)
+		{
+			if (squareNumber(i, j) == square)
+			{
+				squareVec.push_back(value[i][j]);
+			}
+		}
+	}
+
+	conflictCheck(squareVec, squareConflicts);
+}
+
+
+void board::updateConflicts(int i, int j)
+{
+	updateColumnConflicts(j);
+	updateRowConflicts(i);
+	updateSquareConflicts(squareNumber(i, j));
+}
+
+void board::initConflicts()
+{
+	for (int i = 0; i < BoardSize; i++)
+	{
+		for (int j = 0; j < BoardSize; j++)
+		{
+			updateConflicts(i,j);
+		}
+	}
+}
+
+
+
 
 ostream &operator<<(ostream &ostr, vector<ValueType> &v)
 // Overloaded output operator for vector class.
@@ -174,7 +266,20 @@ void board::setCell(int i, int j,int val)
 	if (i >= 1 && i <= BoardSize && j >= 1 && j <= BoardSize && val >= 1 && val <= 9)
 	{
 		value[i][j] = val;
-		updateConflicts();
+		updateConflicts(i,j);
+	}
+	else
+	{
+		throw rangeError("bad value in setCell");
+	}
+}
+
+void board::clearCell(int i, int j)
+{
+	if (i >= 1 && i <= BoardSize && j >= 1 && j <= BoardSize)
+	{
+		value[i][j] = 0;
+		updateConflicts(i, j);
 	}
 	else
 	{
@@ -191,8 +296,40 @@ bool board::isBlank(int i, int j)
 	}
 	else
 	{
-		return (value[i][j] == -1);
+		return (value[i][j] == 0);
 	}
+}
+
+bool board::isSolved()
+{
+	for each (bool b in rowConflicts)
+	{
+		if (b == true)
+			return false;
+	}
+
+	for each (bool b in columnConflicts)
+	{
+		if (b == true)
+			return false;
+	}
+
+	for each (bool b in squareConflicts)
+	{
+		if (b == true)
+			return false;
+	}
+
+	for (int i = 1; i <= BoardSize; i++)
+	{
+		for (int j = 1; j < BoardSize; j++)
+		{
+			if (isBlank(i, j))
+				return false;
+		}
+	}
+
+	return true;
 }
 
 void board::print()
@@ -241,7 +378,9 @@ int main()
    ifstream fin;
    
    // Read the sample grid from the file.
-   string fileName = "sudoku.txt";
+   string fileName;
+   cout << "Enter path to puzzle : ";
+   cin >> fileName;
 
    fin.open(fileName.c_str());
    if (!fin)
@@ -259,6 +398,12 @@ int main()
 			 b1.initialize(fin);
 			 b1.print();
 			 b1.printConflicts();
+			 if (b1.isSolved()){
+				 cout << "\nBoard is solved!\n";
+			 }
+			 else{
+				 cout << "\nBoard is not solved :(\n";
+			 }
       }
    }
    catch  (indexRangeError &ex)
