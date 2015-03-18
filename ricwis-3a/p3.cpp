@@ -24,6 +24,12 @@ const int MaxValue = 9;
 
 int numSolutions = 0;
 
+struct Coordinate
+{
+	int x;
+	int y;
+};
+
 class board
 // Stores the entire Sudoku board
 {
@@ -38,7 +44,9 @@ class board
 	  void printConflicts();
 	  bool isSolved();
 	  void clearCell(int i, int j);
-      
+	  void solve();
+      bool areConflics();
+      Coordinate firstBlank();
    private:
 
       // The following matrices go from 1 to BoardSize in each
@@ -56,6 +64,39 @@ class board
 	  vector<bool> squareConflicts;
 	  void updateSquareConflicts(int square);
 };
+
+Coordinate board::firstBlank()
+{
+	int x = 0;
+	int y = 0;
+	//Find first blank
+	while(!isBlank(x,y) && !isSolved()){
+		if(x != 9)
+		{
+			x++;
+		}
+		else
+		{
+			x = 1;
+			y++;
+		}
+	}
+	return { x, y};
+}
+
+void board::solve()
+{
+	Coordinate myC = firstBlank();
+	setCell(myC.x, myC.y, 1);
+	while(getCell(myC.x, myC.y) != 9 && !isSolved())	{
+		
+		if(!areConflics())
+		{
+			solve();
+		}
+		setCell(myC.x, myC.y, (getCell(myC.x, myC.y) + 1));
+	}
+}
 
 board::board(int sqSize)
    : value(BoardSize+1, BoardSize+1)
@@ -155,6 +196,30 @@ void board::printConflicts()
 		}
 		else{
 			cout << " F";
+		}
+	}
+}
+
+bool board::areConflics()
+{
+	for each (bool b in columnConflicts)
+	{
+		if (b == true){
+			return true;
+		}
+	}
+
+	for each (bool b in columnConflicts)
+	{
+		if (b == true){
+			return true;
+		}
+	}
+
+	for each (bool b in squareConflicts)
+	{
+		if (b == true){
+			return true;
 		}
 	}
 }
@@ -404,6 +469,7 @@ int main()
 			 else{
 				 cout << "\nBoard is not solved :(\n";
 			 }
+			 b1.solve();
       }
    }
    catch  (indexRangeError &ex)
